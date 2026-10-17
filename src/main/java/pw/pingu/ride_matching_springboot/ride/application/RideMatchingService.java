@@ -1,4 +1,4 @@
-package pw.pingu.ride_matching_springboot.ride;
+package pw.pingu.ride_matching_springboot.ride.application;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -18,9 +18,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import pw.pingu.ride_matching_springboot.ride.domain.RideException;
+import pw.pingu.ride_matching_springboot.ride.domain.model.DriverStatus;
+import pw.pingu.ride_matching_springboot.ride.domain.model.Location;
+import pw.pingu.ride_matching_springboot.ride.domain.model.RideStatus;
+
 @Service
 public class RideMatchingService {
 
+	// ponytail: one monitor protects compound lifecycle updates; use transactional persistence before multiple instances.
 	private final Map<String, Driver> drivers = new HashMap<>();
 	private final Map<UUID, Ride> rides = new HashMap<>();
 	private final Clock clock;

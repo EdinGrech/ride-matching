@@ -1,4 +1,6 @@
-package pw.pingu.ride_matching_springboot.ride;
+package pw.pingu.ride_matching_springboot.ride.domain.model;
+
+import pw.pingu.ride_matching_springboot.ride.domain.RideException;
 
 public record Location(double latitude, double longitude) {
 

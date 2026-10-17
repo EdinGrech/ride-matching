@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import pw.pingu.ride_matching_springboot.ride.RideException;
+import pw.pingu.ride_matching_springboot.ride.domain.RideException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {

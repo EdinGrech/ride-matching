@@ -1,4 +1,4 @@
-package pw.pingu.ride_matching_springboot.ride;
+package pw.pingu.ride_matching_springboot.ride.domain.model;
 
 public enum DriverStatus {
 	AVAILABLE,

@@ -1,4 +1,4 @@
-package pw.pingu.ride_matching_springboot.ride;
+package pw.pingu.ride_matching_springboot.ride.domain;
 
 public sealed class RideException extends RuntimeException permits RideException.BadRequest, RideException.NotFound, RideException.Forbidden, RideException.Conflict {
 

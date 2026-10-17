@@ -1,4 +1,4 @@
-package pw.pingu.ride_matching_springboot.ride;
+package pw.pingu.ride_matching_springboot.ride.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -10,6 +10,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.Test;
+
+import pw.pingu.ride_matching_springboot.ride.domain.RideException;
+import pw.pingu.ride_matching_springboot.ride.domain.model.DriverStatus;
+import pw.pingu.ride_matching_springboot.ride.domain.model.Location;
+import pw.pingu.ride_matching_springboot.ride.domain.model.RideStatus;
 
 class RideMatchingServiceTests {
 
