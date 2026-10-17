@@ -1,0 +1,167 @@
+openapi: 3.1.0
+info:
+  title: Ride Matching API
+  version: 2.0.0
+  description: In-memory ride matching service. JWTs require `sub` and a `roles` claim.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /drivers/me:
+    get:
+      operationId: getCurrentDriver
+      summary: Get the authenticated driver's location and lifecycle status
+      x-required-role: DRIVER
+      responses:
+        '200': { $ref: '#/components/responses/Driver' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /drivers/me/availability:
+    put:
+      operationId: setDriverAvailability
+      x-required-role: DRIVER
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRequest' } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Driver' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /drivers/me/location:
+    put:
+      operationId: updateDriverLocation
+      x-required-role: DRIVER
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LocationRequest' } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Driver' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /drivers/me/ride:
+    get:
+      operationId: getCurrentDriverRide
+      summary: Poll the driver's OFFERED or active ride. Destination is absent until pickup.
+      x-required-role: DRIVER
+      responses:
+        '200': { $ref: '#/components/responses/DriverRide' }
+        '204': { description: Driver has no offered or active ride }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /riders/me/ride:
+    get:
+      operationId: getCurrentRiderRide
+      summary: Poll the rider's MATCHING, OFFERED, or active ride. Destination is always included.
+      x-required-role: RIDER
+      responses:
+        '200': { $ref: '#/components/responses/RiderRide' }
+        '204': { description: Rider has no active ride }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /drivers/available:
+    get:
+      operationId: getAvailableDrivers
+      x-required-role: ADMIN
+      parameters:
+        - { $ref: '#/components/parameters/Latitude' }
+        - { $ref: '#/components/parameters/Longitude' }
+        - name: limit
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Available drivers ordered by distance, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/NearbyDriver' } } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /rides:
+    post:
+      operationId: requestRide
+      summary: Create a MATCHING ride and offer its nearest eligible driver when one exists
+      x-required-role: RIDER
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RideRequest' } } } }
+      responses:
+        '201': { $ref: '#/components/responses/RiderRide' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /rides/{rideId}/accept:
+    post:
+      operationId: acceptRideOffer
+      x-required-role: DRIVER
+      parameters: [{ $ref: '#/components/parameters/RideId' }]
+      responses: { '200': { $ref: '#/components/responses/DriverRide' }, '401': { $ref: '#/components/responses/Unauthenticated' }, '403': { $ref: '#/components/responses/Forbidden' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /rides/{rideId}/decline:
+    post:
+      operationId: declineRideOffer
+      summary: Decline without penalty; the same ride is offered to another eligible driver.
+      x-required-role: DRIVER
+      parameters: [{ $ref: '#/components/parameters/RideId' }]
+      responses: { '200': { $ref: '#/components/responses/DriverRide' }, '401': { $ref: '#/components/responses/Unauthenticated' }, '403': { $ref: '#/components/responses/Forbidden' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /rides/{rideId}/arrive:
+    post:
+      operationId: arriveAtPickup
+      summary: Mark an accepted ride waiting at pickup. Driver location must be inside the configured pickup radius.
+      x-required-role: DRIVER
+      parameters: [{ $ref: '#/components/parameters/RideId' }]
+      responses: { '200': { $ref: '#/components/responses/DriverRide' }, '401': { $ref: '#/components/responses/Unauthenticated' }, '403': { $ref: '#/components/responses/Forbidden' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /rides/{rideId}/pickup:
+    post:
+      operationId: pickupRide
+      summary: Start a waiting ride. The response now includes the destination.
+      x-required-role: DRIVER
+      parameters: [{ $ref: '#/components/parameters/RideId' }]
+      responses: { '200': { $ref: '#/components/responses/DriverRide' }, '401': { $ref: '#/components/responses/Unauthenticated' }, '403': { $ref: '#/components/responses/Forbidden' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /rides/{rideId}/complete:
+    post:
+      operationId: completeRide
+      x-required-role: DRIVER
+      parameters: [{ $ref: '#/components/parameters/RideId' }]
+      responses: { '200': { $ref: '#/components/responses/DriverRide' }, '401': { $ref: '#/components/responses/Unauthenticated' }, '403': { $ref: '#/components/responses/Forbidden' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /rides/{rideId}/cancel:
+    post:
+      operationId: cancelRide
+      summary: Penalize the driver. Pre-pickup cancellation rematches this ride; post-pickup cancellation creates a successor ride from the driver's last location.
+      x-required-role: DRIVER
+      parameters: [{ $ref: '#/components/parameters/RideId' }]
+      responses: { '200': { $ref: '#/components/responses/DriverRide' }, '401': { $ref: '#/components/responses/Unauthenticated' }, '403': { $ref: '#/components/responses/Forbidden' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    RideId: { name: rideId, in: path, required: true, schema: { type: string, format: uuid } }
+    Latitude: { name: latitude, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+    Longitude: { name: longitude, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+  responses:
+    Driver: { description: Driver state, content: { application/json: { schema: { $ref: '#/components/schemas/DriverView' } } } }
+    DriverRide: { description: Driver-visible ride, content: { application/json: { schema: { $ref: '#/components/schemas/DriverRideView' } } } }
+    RiderRide: { description: Rider-visible ride, content: { application/json: { schema: { $ref: '#/components/schemas/RiderRideView' } } } }
+    BadRequest: { description: Invalid request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    Unauthenticated: { description: Missing or invalid JWT }
+    Forbidden: { description: Missing role or resource ownership, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    NotFound: { description: Driver or ride not found, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    Conflict: { description: Invalid lifecycle transition, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  schemas:
+    Location:
+      type: object
+      required: [latitude, longitude]
+      properties: { latitude: { type: number, minimum: -90, maximum: 90 }, longitude: { type: number, minimum: -180, maximum: 180 } }
+    AvailabilityRequest: { type: object, required: [available, location], properties: { available: { type: boolean }, location: { $ref: '#/components/schemas/Location' } } }
+    LocationRequest: { type: object, required: [location], properties: { location: { $ref: '#/components/schemas/Location' } } }
+    RideRequest: { type: object, required: [pickup, destination], properties: { pickup: { $ref: '#/components/schemas/Location' }, destination: { $ref: '#/components/schemas/Location' } } }
+    DriverStatus: { type: string, enum: [AVAILABLE, OFFLINE, OFFERED, DRIVING_TO_PICKUP, WAITING_AT_PICKUP, DRIVING_TO_DESTINATION, PENALIZED] }
+    RideStatus: { type: string, enum: [MATCHING, OFFERED, DRIVER_EN_ROUTE, WAITING_AT_PICKUP, IN_PROGRESS, COMPLETED, CANCELLED] }
+    DriverView: { type: object, required: [id, location, status], properties: { id: { type: string }, location: { $ref: '#/components/schemas/Location' }, status: { $ref: '#/components/schemas/DriverStatus' } } }
+    DriverRideView:
+      type: object
+      required: [id, pickup, status]
+      properties: { id: { type: string, format: uuid }, pickup: { $ref: '#/components/schemas/Location' }, destination: { $ref: '#/components/schemas/Location', description: Absent until pickup }, status: { $ref: '#/components/schemas/RideStatus' } }
+    RiderRideView:
+      type: object
+      required: [id, pickup, destination, status]
+      properties: { id: { type: string, format: uuid }, pickup: { $ref: '#/components/schemas/Location' }, destination: { $ref: '#/components/schemas/Location' }, status: { $ref: '#/components/schemas/RideStatus' }, driver: { $ref: '#/components/schemas/DriverView', description: Absent while MATCHING } }
+    NearbyDriver: { type: object, required: [driver, distanceMetres], properties: { driver: { $ref: '#/components/schemas/DriverView' }, distanceMetres: { type: number, minimum: 0 } } }
+    ErrorResponse: { type: object, required: [message], properties: { message: { type: string } } }
