@@ -1,0 +1,19 @@
+meta {
+  name: Driver cancels ride
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8080/rides/{{rideId}}/cancel
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+}
+
+docs {
+  Alternative to completing a ride. Before pickup, the same ride is rematched. After pickup, an emergency cancellation creates a successor ride for the passenger.
+}

@@ -1,0 +1,13 @@
+meta {
+  name: Driver completes ride
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:8080/rides/{{rideId}}/complete
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+}

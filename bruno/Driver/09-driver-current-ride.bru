@@ -1,0 +1,17 @@
+meta {
+  name: Driver current ride
+  type: http
+  seq: 9
+}
+
+get {
+  url: http://localhost:8080/drivers/me/ride
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+}
+
+docs {
+  Returns 204 when the driver has no offered or active ride.
+}

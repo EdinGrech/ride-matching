@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Ride Matching Local",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
