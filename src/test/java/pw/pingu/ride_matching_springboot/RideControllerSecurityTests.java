@@ -29,7 +29,8 @@ class RideControllerSecurityTests {
 	@Test
 	void rejectsUnauthenticatedRequests() throws Exception {
 		mockMvc.perform(get("/drivers/available").param("latitude", "51.5").param("longitude", "-0.12").param("limit", "1"))
-				.andExpect(status().isUnauthorized());
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Authentication is required"));
 	}
 
 	@Test
@@ -39,7 +40,27 @@ class RideControllerSecurityTests {
 						.authorities(new SimpleGrantedAuthority("ROLE_DRIVER")))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"pickup\":{\"latitude\":51.5,\"longitude\":-0.12},\"destination\":{\"latitude\":51.51,\"longitude\":-0.11}}"))
-				.andExpect(status().isForbidden());
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.message").value("Access is denied"));
+	}
+
+	@Test
+	void returnsConsistentErrorsForInvalidRequests() throws Exception {
+		mockMvc.perform(put("/drivers/me/availability")
+				.with(jwt().jwt(token -> token.subject("invalid-driver").claim("roles", List.of("DRIVER")))
+						.authorities(new SimpleGrantedAuthority("ROLE_DRIVER")))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"location\":{\"latitude\":51.5,\"longitude\":-0.12}}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("available is required"));
+
+		mockMvc.perform(post("/rides")
+				.with(jwt().jwt(token -> token.subject("invalid-rider").claim("roles", List.of("RIDER")))
+						.authorities(new SimpleGrantedAuthority("ROLE_RIDER")))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("Malformed request"));
 	}
 
 	@Test

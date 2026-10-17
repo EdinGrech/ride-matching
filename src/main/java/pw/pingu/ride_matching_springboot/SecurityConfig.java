@@ -1,12 +1,17 @@
 package pw.pingu.ride_matching_springboot;
 
-import java.util.List;
 import java.util.Arrays;
+import java.io.IOException;
+import java.util.List;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -22,19 +27,34 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import pw.pingu.ride_matching_springboot.error.ApiError;
+import tools.jackson.databind.ObjectMapper;
+
 @Configuration
 @EnableMethodSecurity
 class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http,
-			Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter) throws Exception {
+			Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter, ObjectMapper objectMapper) throws Exception {
 		return http
 				.csrf(csrf -> csrf.disable())
 				.cors(Customizer.withDefaults())
 				.authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+				.exceptionHandling(exceptions -> exceptions
+						.authenticationEntryPoint((request, response, exception) -> writeError(response, HttpStatus.UNAUTHORIZED,
+								"Authentication is required", objectMapper))
+						.accessDeniedHandler((request, response, exception) -> writeError(response, HttpStatus.FORBIDDEN,
+								"Access is denied", objectMapper)))
 				.oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
 				.build();
+	}
+
+	private static void writeError(HttpServletResponse response, HttpStatus status, String message, ObjectMapper objectMapper)
+			throws IOException {
+		response.setStatus(status.value());
+		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+		objectMapper.writeValue(response.getOutputStream(), new ApiError(message));
 	}
 
 	@Bean

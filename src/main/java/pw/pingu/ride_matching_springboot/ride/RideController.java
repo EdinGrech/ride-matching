@@ -3,11 +3,13 @@ package pw.pingu.ride_matching_springboot.ride;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,14 +32,14 @@ public class RideController {
 	@PutMapping("/drivers/me/availability")
 	@PreAuthorize("hasRole('DRIVER')")
 	public RideMatchingService.DriverView setAvailability(Authentication authentication,
-			@RequestBody AvailabilityRequest request) {
-		return rideMatchingService.setAvailability(authentication.getName(), request.available(), request.location());
+			@Valid @RequestBody AvailabilityRequest request) {
+		return rideMatchingService.setAvailability(authentication.getName(), request.available(), request.location().toLocation());
 	}
 
 	@PutMapping("/drivers/me/location")
 	@PreAuthorize("hasRole('DRIVER')")
-	public RideMatchingService.DriverView updateLocation(Authentication authentication, @RequestBody LocationRequest request) {
-		return rideMatchingService.updateLocation(authentication.getName(), request.location());
+	public RideMatchingService.DriverView updateLocation(Authentication authentication, @Valid @RequestBody LocationRequest request) {
+		return rideMatchingService.updateLocation(authentication.getName(), request.location().toLocation());
 	}
 
 	@GetMapping("/drivers/me")
@@ -64,9 +66,9 @@ public class RideController {
 
 	@PostMapping("/rides")
 	@PreAuthorize("hasRole('RIDER')")
-	public ResponseEntity<RideMatchingService.RiderRideView> requestRide(Authentication authentication, @RequestBody RideRequest request) {
+	public ResponseEntity<RideMatchingService.RiderRideView> requestRide(Authentication authentication, @Valid @RequestBody RideRequest request) {
 		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(rideMatchingService.requestRide(authentication.getName(), request.pickup(), request.destination()));
+				.body(rideMatchingService.requestRide(authentication.getName(), request.pickup().toLocation(), request.destination().toLocation()));
 	}
 
 	@PostMapping("/rides/{rideId}/accept")
@@ -112,40 +114,22 @@ public class RideController {
 		return rideMatchingService.availableDrivers(new Location(latitude, longitude), limit);
 	}
 
-	@ExceptionHandler(RideException.BadRequest.class)
-	ResponseEntity<ErrorResponse> badRequest(RideException exception) {
-		return error(HttpStatus.BAD_REQUEST, exception);
+	public record AvailabilityRequest(@NotNull(message = "available is required") Boolean available,
+			@NotNull(message = "location is required") @Valid LocationInput location) {
 	}
 
-	@ExceptionHandler(RideException.NotFound.class)
-	ResponseEntity<ErrorResponse> notFound(RideException exception) {
-		return error(HttpStatus.NOT_FOUND, exception);
+	public record LocationRequest(@NotNull(message = "location is required") @Valid LocationInput location) {
 	}
 
-	@ExceptionHandler(RideException.Forbidden.class)
-	ResponseEntity<ErrorResponse> forbidden(RideException exception) {
-		return error(HttpStatus.FORBIDDEN, exception);
+	public record RideRequest(@NotNull(message = "pickup is required") @Valid LocationInput pickup,
+			@NotNull(message = "destination is required") @Valid LocationInput destination) {
 	}
 
-	@ExceptionHandler(RideException.Conflict.class)
-	ResponseEntity<ErrorResponse> conflict(RideException exception) {
-		return error(HttpStatus.CONFLICT, exception);
-	}
-
-	private static ResponseEntity<ErrorResponse> error(HttpStatus status, RideException exception) {
-		return ResponseEntity.status(status).body(new ErrorResponse(exception.getMessage()));
-	}
-
-	public record AvailabilityRequest(boolean available, Location location) {
-	}
-
-	public record LocationRequest(Location location) {
-	}
-
-	public record RideRequest(Location pickup, Location destination) {
-	}
-
-	public record ErrorResponse(String message) {
+	public record LocationInput(@NotNull(message = "latitude is required") Double latitude,
+			@NotNull(message = "longitude is required") Double longitude) {
+		Location toLocation() {
+			return new Location(latitude, longitude);
+		}
 	}
 
 }

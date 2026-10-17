@@ -140,7 +140,7 @@ components:
     DriverRide: { description: Driver-visible ride, content: { application/json: { schema: { $ref: '#/components/schemas/DriverRideView' } } } }
     RiderRide: { description: Rider-visible ride, content: { application/json: { schema: { $ref: '#/components/schemas/RiderRideView' } } } }
     BadRequest: { description: Invalid request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-    Unauthenticated: { description: Missing or invalid JWT }
+    Unauthenticated: { description: Missing or invalid JWT, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
     Forbidden: { description: Missing role or resource ownership, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
     NotFound: { description: Driver or ride not found, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
     Conflict: { description: Invalid lifecycle transition, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
