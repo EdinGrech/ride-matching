@@ -1,0 +1,13 @@
+meta {
+  name: Driver arrives
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:8080/rides/{{rideId}}/arrive
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Driver updates location
+  type: http
+  seq: 8
+}
+
+put {
+  url: http://localhost:8080/drivers/me/location
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+  Content-Type: application/json
+}
+
+body {
+  {
+    "location": {
+      "latitude": 51.5074,
+      "longitude": -0.1278
+    }
+  }
+}

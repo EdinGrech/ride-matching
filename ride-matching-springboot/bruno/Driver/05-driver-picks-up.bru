@@ -1,0 +1,13 @@
+meta {
+  name: Driver picks up rider
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:8080/rides/{{rideId}}/pickup
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+}

@@ -1,0 +1,13 @@
+meta {
+  name: Driver profile
+  type: http
+  seq: 7
+}
+
+get {
+  url: http://localhost:8080/drivers/me
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+}

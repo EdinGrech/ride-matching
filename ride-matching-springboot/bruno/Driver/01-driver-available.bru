@@ -1,0 +1,26 @@
+meta {
+  name: Driver goes available
+  type: http
+  seq: 2
+}
+
+put {
+  url: http://localhost:8080/drivers/me/availability
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "available": true,
+    "location": {
+      "latitude": 51.5074,
+      "longitude": -0.1278
+    }
+  }
+}
