@@ -30,6 +30,11 @@ export interface DriverRideView {
   status: RideStatus;
 }
 
+export interface DriverStateView {
+  driver: DriverView | null;
+  ride: DriverRideView | null;
+}
+
 export type DriverStatus = 'AVAILABLE' | 'OFFLINE' | 'OFFERED' | 'DRIVING_TO_PICKUP' | 'WAITING_AT_PICKUP' | 'DRIVING_TO_DESTINATION' | 'PENALIZED';
 export type RideStatus = 'MATCHING' | 'OFFERED' | 'DRIVER_EN_ROUTE' | 'WAITING_AT_PICKUP' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
@@ -40,6 +45,10 @@ export class RideApi {
 
   currentDriver(): Observable<DriverView> {
     return this.http.get<DriverView>(`${this.baseUrl}/drivers/me`);
+  }
+
+  currentDriverState(): Observable<DriverStateView> {
+    return this.http.get<DriverStateView>(`${this.baseUrl}/drivers/me/state`);
   }
 
   setAvailability(available: boolean, location: Location): Observable<DriverView> {
@@ -58,6 +67,10 @@ export class RideApi {
     return this.http.get<PassengerRideView>(`${this.baseUrl}/riders/me/ride`, { observe: 'response' }).pipe(
       map((response) => response.body ?? null),
     );
+  }
+
+  cancelCurrentRiderRide(): Observable<PassengerRideView> {
+    return this.http.delete<PassengerRideView>(`${this.baseUrl}/riders/me/ride`);
   }
 
   currentDriverRide(): Observable<DriverRideView | null> {

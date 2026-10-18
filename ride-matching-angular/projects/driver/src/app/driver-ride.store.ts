@@ -23,17 +23,7 @@ export const DriverRideStore = signalStore(
   withState(initialState),
   withMethods((store, api = inject(RideApi), auth = inject(AuthFacade)) => {
     let inFlight = false;
-    const reload = async (): Promise<{ driver: DriverView | null; ride: DriverRideView | null }> => {
-      try {
-        const driver = await firstValueFrom(api.currentDriver());
-        return { driver, ride: await firstValueFrom(api.currentDriverRide()) };
-      } catch (error: unknown) {
-        if ((error as { status?: number }).status === 404) {
-          return { driver: null, ride: null };
-        }
-        throw error;
-      }
-    };
+    const reload = () => firstValueFrom(api.currentDriverState());
     const run = async <T>(request: () => Promise<T>, update: (value: T) => void): Promise<void> => {
       if (inFlight) {
         return;

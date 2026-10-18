@@ -41,6 +41,9 @@ export const PassengerRideStore = signalStore(
       async requestRide(pickup: Location, destination: Location): Promise<void> {
         await run(() => firstValueFrom(api.requestRide(pickup, destination)));
       },
+      async cancelRide(): Promise<void> {
+        await run(() => firstValueFrom(api.cancelCurrentRiderRide()));
+      },
       async refresh(): Promise<void> {
         if (auth.hasRole('RIDER')) {
           const previousRide = store.ride();

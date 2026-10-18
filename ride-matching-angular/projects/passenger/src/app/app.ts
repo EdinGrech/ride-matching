@@ -60,6 +60,10 @@ export class App implements OnInit {
     }
   }
 
+  protected cancelRide(): void {
+    void this.rideStore.cancelRide();
+  }
+
   protected logout(): void {
     this.rideStore.clear();
     this.auth.logout();
