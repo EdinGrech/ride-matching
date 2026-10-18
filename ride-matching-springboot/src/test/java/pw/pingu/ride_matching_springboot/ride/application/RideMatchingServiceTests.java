@@ -1,13 +1,20 @@
 package pw.pingu.ride_matching_springboot.ride.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
@@ -64,6 +71,24 @@ class RideMatchingServiceTests {
 		assertNull(ride.driver());
 		assertEquals(DriverStatus.OFFERED, service.setAvailability("driver", true, pickup).status());
 		assertEquals(RideStatus.OFFERED, service.currentRideForRider("rider").orElseThrow().status());
+	}
+
+	@Test
+	void riderCancellationReleasesDriverWithoutRematchingWaitingRide() {
+		RideMatchingService service = service();
+		Location pickup = new Location(51.5, -0.12);
+		assertNull(service.currentDriverState("new-driver").driver());
+		service.setAvailability("driver", true, pickup);
+		service.requestRide("first-rider", pickup, new Location(51.51, -0.11));
+		RideMatchingService.RiderRideView waitingRide = service.requestRide("second-rider", pickup, new Location(51.51, -0.11));
+
+		assertEquals(RideStatus.CANCELLED, service.cancelRideForRider("first-rider").status());
+		assertFalse(service.currentRideForRider("first-rider").isPresent());
+		assertEquals(DriverStatus.AVAILABLE, service.currentDriver("driver").status());
+		assertEquals(RideStatus.MATCHING, service.currentRideForRider("second-rider").orElseThrow().status());
+		assertNull(service.currentRideForRider("second-rider").orElseThrow().driver());
+		assertFalse(service.currentRideForDriver("driver").isPresent());
+		assertEquals(waitingRide.id(), service.currentRideForRider("second-rider").orElseThrow().id());
 	}
 
 	@Test
@@ -131,6 +156,37 @@ class RideMatchingServiceTests {
 		RideMatchingService.RiderRideView ride = service.requestRide("rider", pickup, new Location(51.51, -0.11));
 
 		assertThrows(RideException.Forbidden.class, () -> service.accept("other", ride.id()));
+	}
+
+	@Test
+	void concurrentAcceptsAssignAnOfferedRideOnce() throws Exception {
+		RideMatchingService service = service();
+		Location pickup = new Location(51.5, -0.12);
+		service.setAvailability("driver", true, pickup);
+		RideMatchingService.RiderRideView ride = service.requestRide("rider", pickup, new Location(51.51, -0.11));
+		CountDownLatch start = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<Boolean> first = executor.submit(() -> acceptWhenStarted(service, "driver", ride.id(), start));
+			Future<Boolean> second = executor.submit(() -> acceptWhenStarted(service, "driver", ride.id(), start));
+			start.countDown();
+
+			assertTrue(first.get(5, TimeUnit.SECONDS) ^ second.get(5, TimeUnit.SECONDS));
+		} finally {
+			executor.shutdownNow();
+		}
+		assertEquals(RideStatus.DRIVER_EN_ROUTE, service.currentRideForRider("rider").orElseThrow().status());
+		assertEquals(DriverStatus.DRIVING_TO_PICKUP, service.currentDriver("driver").status());
+	}
+
+	private static boolean acceptWhenStarted(RideMatchingService service, String driverId, java.util.UUID rideId, CountDownLatch start) throws InterruptedException {
+		start.await();
+		try {
+			service.accept(driverId, rideId);
+			return true;
+		} catch (RideException.Conflict exception) {
+			return false;
+		}
 	}
 
 	private static RideMatchingService service() {

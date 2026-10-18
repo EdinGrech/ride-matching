@@ -18,6 +18,15 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /drivers/me/state:
+    get:
+      operationId: getCurrentDriverState
+      summary: Get the authenticated driver's state and offered or active ride in one request
+      x-required-role: DRIVER
+      responses:
+        '200': { $ref: '#/components/responses/DriverState' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /drivers/me/availability:
     put:
       operationId: setDriverAvailability
@@ -60,6 +69,16 @@ paths:
         '204': { description: Rider has no active ride }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      operationId: cancelCurrentRiderRide
+      summary: Cancel the rider's ride before driver acceptance without penalizing the driver
+      x-required-role: RIDER
+      responses:
+        '200': { $ref: '#/components/responses/RiderRide' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /drivers/available:
     get:
       operationId: getAvailableDrivers
@@ -137,6 +156,7 @@ components:
     Longitude: { name: longitude, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
   responses:
     Driver: { description: Driver state, content: { application/json: { schema: { $ref: '#/components/schemas/DriverView' } } } }
+    DriverState: { description: Driver and offered or active ride state, content: { application/json: { schema: { $ref: '#/components/schemas/DriverStateView' } } } }
     DriverRide: { description: Driver-visible ride, content: { application/json: { schema: { $ref: '#/components/schemas/DriverRideView' } } } }
     RiderRide: { description: Rider-visible ride, content: { application/json: { schema: { $ref: '#/components/schemas/RiderRideView' } } } }
     BadRequest: { description: Invalid request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -155,6 +175,12 @@ components:
     DriverStatus: { type: string, enum: [AVAILABLE, OFFLINE, OFFERED, DRIVING_TO_PICKUP, WAITING_AT_PICKUP, DRIVING_TO_DESTINATION, PENALIZED] }
     RideStatus: { type: string, enum: [MATCHING, OFFERED, DRIVER_EN_ROUTE, WAITING_AT_PICKUP, IN_PROGRESS, COMPLETED, CANCELLED] }
     DriverView: { type: object, required: [id, location, status], properties: { id: { type: string }, location: { $ref: '#/components/schemas/Location' }, status: { $ref: '#/components/schemas/DriverStatus' } } }
+    DriverStateView:
+      type: object
+      required: [driver, ride]
+      properties:
+        driver: { $ref: '#/components/schemas/DriverView', nullable: true }
+        ride: { $ref: '#/components/schemas/DriverRideView', nullable: true }
     DriverRideView:
       type: object
       required: [id, pickup, status]

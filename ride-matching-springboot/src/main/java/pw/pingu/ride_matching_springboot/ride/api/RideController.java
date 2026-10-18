@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -51,6 +52,12 @@ public class RideController {
 		return rideMatchingService.currentDriver(authentication.getName());
 	}
 
+	@GetMapping("/drivers/me/state")
+	@PreAuthorize("hasRole('DRIVER')")
+	public RideMatchingService.DriverStateView currentDriverState(Authentication authentication) {
+		return rideMatchingService.currentDriverState(authentication.getName());
+	}
+
 	@GetMapping("/drivers/me/ride")
 	@PreAuthorize("hasRole('DRIVER')")
 	public ResponseEntity<RideMatchingService.DriverRideView> currentDriverRide(Authentication authentication) {
@@ -65,6 +72,12 @@ public class RideController {
 		return rideMatchingService.currentRideForRider(authentication.getName())
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.noContent().build());
+	}
+
+	@DeleteMapping("/riders/me/ride")
+	@PreAuthorize("hasRole('RIDER')")
+	public RideMatchingService.RiderRideView cancelCurrentRiderRide(Authentication authentication) {
+		return rideMatchingService.cancelRideForRider(authentication.getName());
 	}
 
 	@PostMapping("/rides")

@@ -92,6 +92,16 @@ public class RideMatchingService {
 		return view(driver(driverId));
 	}
 
+	public synchronized DriverStateView currentDriverState(String driverId) {
+		expire(clock.instant());
+		Driver driver = drivers.get(driverId);
+		if (driver == null) {
+			return new DriverStateView(null, null);
+		}
+		Ride ride = driver.activeRideId == null ? null : rides.get(driver.activeRideId);
+		return new DriverStateView(view(driver), ride != null && isActive(ride.status) ? driverView(ride) : null);
+	}
+
 	public synchronized RiderRideView requestRide(String riderId, Location pickup, Location destination) {
 		Instant now = clock.instant();
 		expire(now);
@@ -111,6 +121,23 @@ public class RideMatchingService {
 		expire(clock.instant());
 		requireId(riderId, "rider ID");
 		return activeRideForRider(riderId).map(this::riderView);
+	}
+
+	public synchronized RiderRideView cancelRideForRider(String riderId) {
+		expire(clock.instant());
+		Ride ride = activeRideForRider(riderId).orElseThrow(() -> new RideException.NotFound("rider has no active ride"));
+		if (ride.status != RideStatus.MATCHING && ride.status != RideStatus.OFFERED) {
+			throw new RideException.Conflict("ride cannot be cancelled after driver acceptance");
+		}
+		if (ride.driverId != null) {
+			Driver driver = drivers.get(ride.driverId);
+			driver.activeRideId = null;
+			driver.status = DriverStatus.AVAILABLE;
+		}
+		ride.driverId = null;
+		ride.offerExpiresAt = null;
+		ride.status = RideStatus.CANCELLED;
+		return riderView(ride);
 	}
 
 	public synchronized Optional<DriverRideView> currentRideForDriver(String driverId) {
@@ -355,6 +382,9 @@ public class RideMatchingService {
 	}
 
 	public record DriverView(String id, Location location, DriverStatus status) {
+	}
+
+	public record DriverStateView(DriverView driver, DriverRideView ride) {
 	}
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
