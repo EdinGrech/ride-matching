@@ -1,4 +1,13 @@
 services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    command: ["--docker_only=true"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+
   prometheus:
     image: prom/prometheus:v3.5.0
     command: --config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver
@@ -8,6 +17,8 @@ services:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - cadvisor
 
   grafana:
     image: grafana/grafana:12.1.0
@@ -26,24 +37,23 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      BASE_URL: ${BASE_URL:-http://host.docker.internal:8080}
       TOKEN_ISSUER: ${TOKEN_ISSUER:-http://mock-idp:8080/ride}
       TOKEN_ISSUER_HOST: ${TOKEN_ISSUER_HOST:-localhost:8090}
       RUN_ID: ${RUN_ID:-}
-      GENERATE_LOCAL_TOKENS: ${GENERATE_LOCAL_TOKENS:-true}
       RIDER_TOKENS: ${RIDER_TOKENS:-[]}
       DRIVER_TOKENS: ${DRIVER_TOKENS:-[]}
-      FALLBACK_DRIVER_TOKENS: ${FALLBACK_DRIVER_TOKENS:-[]}
-      VUS: ${VUS:-1}
-      DURATION: ${DURATION:-1m}
-      MIN_ITERATION_DURATION: ${MIN_ITERATION_DURATION:-1s}
       POLL_SECONDS: ${POLL_SECONDS:-5}
-      MAX_POLLS: ${MAX_POLLS:-12}
-      DECLINE_RATE: ${DECLINE_RATE:-0}
+      RIDER_CANCEL_RATE: ${RIDER_CANCEL_RATE:-0}
+      DRIVER_DECLINE_RATE: ${DRIVER_DECLINE_RATE:-0}
+      TRIP_MIN_MINUTES: ${TRIP_MIN_MINUTES:-5}
+      TRIP_MAX_MINUTES: ${TRIP_MAX_MINUTES:-30}
+      TIME_SCALE: ${TIME_SCALE:-60}
+      BENCHMARK_PROFILE: ${BENCHMARK_PROFILE:-full}
+      COHORT_STAGES: ${COHORT_STAGES:-}
+      IMPLEMENTATION: ${IMPLEMENTATION:-springboot}
       K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
       K6_PROMETHEUS_RW_PUSH_INTERVAL: 1s
-      K6_PROMETHEUS_RW_LABELS: testid=${RUN_ID:-unset}
-      K6_PROMETHEUS_RW_TREND_STATS: p(95),p(99),avg,max
+      K6_PROMETHEUS_RW_TREND_STATS: p(50),p(95),p(99),avg,max
     volumes:
       - ./loadtest:/scripts:ro
-    command: run --out experimental-prometheus-rw /scripts/ride-offer-flow.js
+    command: run --tag testid=${RUN_ID:-unset} --tag implementation=${IMPLEMENTATION:-springboot} --out experimental-prometheus-rw /scripts/population-ramp.js
