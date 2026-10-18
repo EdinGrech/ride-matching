@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Counter } from 'k6/metrics';
+import { Counter, Gauge } from 'k6/metrics';
 import exec from 'k6/execution';
 
 const baseUrl = (__ENV.BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
@@ -38,11 +38,16 @@ const defaultStages = {
 };
 const cohortStages = JSON.parse(__ENV.COHORT_STAGES || JSON.stringify(defaultStages[benchmarkProfile] || []));
 const maxCohorts = Math.max(...cohortStages.map((stage) => stage.target));
+const populationMetricsDuration = `${cohortStages.reduce((seconds, stage) => {
+  const match = /^(\d+)(s|m)$/.exec(stage.duration);
+  return seconds + Number(match?.[1] || 0) * (match?.[2] === 'm' ? 60 : 1);
+}, 0) + 60}s`;
 const riderTokens = JSON.parse(__ENV.RIDER_TOKENS || '[]');
 const driverTokens = JSON.parse(__ENV.DRIVER_TOKENS || '[]');
 const completedLifecycles = new Counter('ride_lifecycles_completed');
 const abortedLifecycles = new Counter('ride_lifecycles_aborted');
 const cancelledLifecycles = new Counter('ride_lifecycles_cancelled');
+const activeUsers = new Gauge('simulated_users_active');
 let quarantined = false;
 let nextLocationAt = 0;
 
@@ -52,21 +57,28 @@ function scaledStages(multiplier) {
 
 export const options = {
   scenarios: {
+    population_metrics: {
+      executor: 'constant-vus',
+      exec: 'recordPopulation',
+      vus: 1,
+      duration: populationMetricsDuration,
+      gracefulStop: '1s',
+    },
     riders: {
       executor: 'ramping-vus',
       exec: 'rider',
       startVUs: 0,
       stages: scaledStages(2),
-      gracefulRampDown: '30s',
-      gracefulStop: '30s',
+      gracefulRampDown: '1m',
+      gracefulStop: '1m',
     },
     drivers: {
       executor: 'ramping-vus',
       exec: 'driver',
       startVUs: 0,
       stages: scaledStages(5),
-      gracefulRampDown: '30s',
-      gracefulStop: '30s',
+      gracefulRampDown: '1m',
+      gracefulStop: '1m',
     },
   },
   thresholds: {
@@ -115,15 +127,6 @@ function issueToken(subject) {
   return token;
 }
 
-function waitForApi() {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const response = http.get(`${baseUrl}/drivers/me/state`, { tags: { name: 'GET /drivers/me/state', flow: 'actor-setup' } });
-    if (response.status !== 0) return;
-    sleep(1);
-  }
-  throw new Error(`API did not become reachable at ${baseUrl}`);
-}
-
 export function setup() {
   if (!runId) throw new Error('set RUN_ID to identify this load-test run');
   if (!defaultStages[benchmarkProfile] || !Array.isArray(cohortStages) || !cohortStages.length || cohortStages.some((stage) => !stage.duration || !Number.isInteger(stage.target) || stage.target < 0)) {
@@ -134,9 +137,8 @@ export function setup() {
       || driverDeclineRate < 0 || driverDeclineRate > 1) {
     throw new Error('timing and cancellation settings must be valid');
   }
-  waitForApi();
-  // k6 VU IDs are shared by both scenarios, so each role needs slots for every possible ID.
-  const actorSlots = maxCohorts * 7;
+  // The observer VU shares the global VU ID range with rider and driver actors.
+  const actorSlots = maxCohorts * 7 + 1;
   const generatedRiderTokens = riderTokens.length ? riderTokens : Array.from(
     { length: actorSlots },
     (_, index) => issueToken(`rider-load-test-${runId}-${index + 1}`),
@@ -170,6 +172,12 @@ function tripSeconds() {
 function abort(role, reason) {
   abortedLifecycles.add(1, { flow: 'population-ramp', role, reason, time_scale: String(timeScale) });
   quarantined = true;
+}
+
+export function recordPopulation() {
+  // Exclude this observer VU to report only simulated rider and driver users.
+  activeUsers.add(exec.instance.vusActive - 1, { flow: 'population-ramp', time_scale: String(timeScale) });
+  sleep(1);
 }
 
 function updateLocation(token, location) {

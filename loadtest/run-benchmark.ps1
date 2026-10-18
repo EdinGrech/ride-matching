@@ -31,11 +31,27 @@ $env:BENCHMARK_PROFILE = if ($Quick) { 'quick' } else { 'full' }
 & docker compose @compose up -d --build --force-recreate mock-idp cadvisor prometheus grafana api
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+$apiAddress = (& docker compose @compose port api 8080).Trim()
+$apiReady = $false
+for ($attempt = 0; $attempt -lt 60; $attempt++) {
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri "http://$apiAddress/drivers/me/state" -ErrorAction Stop | Out-Null
+        $apiReady = $true
+        break
+    } catch {
+        if ($_.Exception.Response) {
+            $apiReady = $true
+            break
+        }
+    }
+    Start-Sleep -Seconds 1
+}
+if (-not $apiReady) { throw "API did not become reachable at http://$apiAddress" }
+
 $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 & docker compose @compose --profile load-test run --rm k6
 $result = $LASTEXITCODE
 $finished = [DateTimeOffset]::UtcNow.AddMinutes(1).ToUnixTimeMilliseconds()
-$query = "from=$started&to=$finished&timezone=browser&var-flow=population-ramp&var-implementation=$($env:IMPLEMENTATION)&var-testid=$($env:RUN_ID)"
+$query = "from=$started&to=$finished&timezone=browser&var-implementation=$($env:IMPLEMENTATION)&var-testid=$($env:RUN_ID)"
 Write-Host "Grafana: http://localhost:3000/d/ride-benchmark/ride-benchmark?$query"
-Write-Host "Timeline: http://localhost:3000/d/ride-load-test-timeline/ride-load-test-timeline?$query"
 exit $result

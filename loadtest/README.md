@@ -19,7 +19,7 @@ Run the comparison matrix with the full accelerated population ramp:
 .\loadtest\run-benchmark.ps1 -Backend quarkus -Cpu 2
 ```
 
-Each run packages one backend, recreates it with the selected CPU limit and `512 MiB` memory limit, starts the local observability stack, waits for the API, and runs the benchmark. The script prints benchmark and timeline URLs filtered to that exact run and its exact wall-clock range.
+Each run packages one backend, recreates it with the selected CPU limit and `512 MiB` memory limit, starts the local observability stack, waits for the API, and runs the benchmark. The script prints the single benchmark URL filtered to that exact run and its exact wall-clock range.
 
 ## What It Models
 
@@ -35,7 +35,7 @@ The test fails on request errors, lifecycle aborts, or dropped iterations. Setup
 - Prometheus: `http://localhost:9090`
 - Dashboard: `http://localhost:3000/d/ride-benchmark/ride-benchmark`
 
-The dashboard shows achieved request rate; p50, p95, and p99 latency; failures; completed/aborted lifecycle evidence; and cAdvisor CPU/memory for the internal `api` container. The API is intentionally a single container because ride state is in memory; benchmark population comes from k6 users, not service replicas.
+The dashboard shows active simulated users, achieved request rate, p50/p95/p99 latency, failures, lifecycle outcomes, and cAdvisor CPU/memory for the internal `api` container. The API is intentionally a single container because ride state is in memory; benchmark population comes from k6 users, not service replicas.
 
 Stop the local stack when finished:
 
