@@ -1,67 +1,34 @@
-# ride-matching-quarkus
+# Ride Matching Service (Quarkus)
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+In-memory Quarkus implementation of the ride matching API. Driver and ride state is lost when the application restarts.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Local Development
 
-## Running the application in dev mode
+Requires Java 21 and Docker.
 
-You can run your application in dev mode that enables live coding using:
+1. From the workspace root, start the local identity provider:
 
-```shell script
-./mvnw quarkus:dev
+   ```powershell
+   docker compose up -d mock-idp
+   ```
+
+2. Start the API:
+
+   ```powershell
+   .\mvnw.cmd quarkus:dev
+   ```
+
+The API starts on `http://localhost:8080`. It validates JWTs from the workspace mock issuer and accepts frontend origins at `http://localhost:4200` and `http://localhost:4201` by default.
+
+## Configuration
+
+```properties
+ride.gps.pickup-radius-metres=50
+ride.offer-timeout=30s
+ride.penalty-duration=30m
+JWT_JWK_SET_URI=http://localhost:8090/ride/jwks
+JWT_ISSUER_URI=http://localhost:8090/ride
+CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4201
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
-
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
-./mvnw package
-```
-
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/ride-matching-quarkus-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+The API contract is `../ride-matching-springboot/openapi.yaml` while the implementations remain in parallel.
