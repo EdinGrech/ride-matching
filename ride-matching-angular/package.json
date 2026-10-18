@@ -1,0 +1,48 @@
+{
+  "name": "ride-matching-angular",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve passenger --port 4200",
+    "start:passenger": "ng serve passenger --port 4200",
+    "start:driver": "ng serve driver --port 4201",
+    "build": "ng build passenger",
+    "build:passenger": "ng build passenger",
+    "build:driver": "ng build driver",
+    "build:libs": "ng build shared-auth && ng build shared-api && ng build shared-map",
+    "prestart": "npm run build:libs",
+    "prestart:passenger": "npm run build:libs",
+    "prestart:driver": "npm run build:libs",
+    "prebuild": "npm run build:libs",
+    "prebuild:passenger": "npm run build:libs",
+    "prebuild:driver": "npm run build:libs",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
+  },
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "dependencies": {
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
+    "@angular/router": "^22.2.0",
+    "@ngrx/signals": "^22.0.1",
+    "@types/leaflet": "^1.9.22",
+    "angular-oauth2-oidc": "^22.0.2",
+    "leaflet": "^1.9.4",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.3",
+    "@angular/cli": "^22.2.3",
+    "@angular/compiler-cli": "^22.2.0",
+    "jsdom": "^30.0.0",
+    "ng-packagr": "^22.2.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.0"
+  }
+}

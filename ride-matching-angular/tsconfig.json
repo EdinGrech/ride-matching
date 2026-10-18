@@ -1,0 +1,54 @@
+/* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
+/* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "paths": {
+      "shared-api": ["./dist/shared-api"],
+      "shared-auth": ["./dist/shared-auth"],
+      "shared-map": ["./dist/shared-map"]
+    },
+    "target": "ES2022",
+    "module": "preserve"
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./projects/passenger/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/driver/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/shared-auth/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/shared-auth/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/shared-api/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/shared-api/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/shared-map/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/shared-map/tsconfig.spec.json"
+    }
+  ]
+}

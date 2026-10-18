@@ -1,0 +1,58 @@
+<main class="app-shell">
+  <header>
+    <div>
+      <p class="eyebrow">Passenger application</p>
+      <h1>Request a ride</h1>
+    </div>
+    @if (auth.session(); as session) {
+      <div class="session">
+        <span>{{ session.subject }}</span>
+        <button class="text-button" (click)="logout()">Sign out</button>
+      </div>
+    } @else {
+      <button class="primary" (click)="auth.login()">Sign in as passenger</button>
+    }
+  </header>
+
+  @if (!auth.hasRole('RIDER')) {
+    <section class="notice">
+      <h2>Passenger sign-in required</h2>
+      <p>Choose <code>rider-1</code> on the mock OAuth sign-in page, leave optional claims blank, then return here.</p>
+    </section>
+  } @else {
+    <section class="workspace">
+        <div class="map-card"><rm-ride-map [center]="mapCenter()" [markers]="markers()" (locationSelected)="selectLocation($event)" /></div>
+
+      <aside class="side-panel">
+          <section class="request-panel">
+            <p class="eyebrow">Pickup</p>
+            <h2>Where should the driver meet you?</h2>
+            <p class="muted">Your browser location is used for pickup. Click “Set pickup on map” if you need a fallback, then click the destination.</p>
+            <p class="selection">Pickup: {{ pickup ? (pickup.latitude.toFixed(4) + ', ' + pickup.longitude.toFixed(4)) : 'Select on the map' }}</p>
+            <p class="selection">Destination: {{ destination ? (destination.latitude.toFixed(4) + ', ' + destination.longitude.toFixed(4)) : 'Select on the map' }}</p>
+            <button class="secondary" [disabled]="rideStore.loading() || isActiveRide(rideStore.ride())" (click)="selectPickupOnMap()">Set pickup on map</button>
+            <button class="primary" [disabled]="rideStore.loading() || !canRequestRide()" (click)="requestRide()">Request a ride</button>
+        </section>
+
+        @if (rideStore.ride(); as ride) {
+          <section class="ride-state">
+            <p class="eyebrow">Current ride</p>
+            <h2>{{ ride.status.replaceAll('_', ' ') }}</h2>
+            <dl>
+              <div><dt>Pickup</dt><dd>{{ ride.pickup.latitude.toFixed(4) }}, {{ ride.pickup.longitude.toFixed(4) }}</dd></div>
+              <div><dt>Destination</dt><dd>{{ ride.destination.latitude.toFixed(4) }}, {{ ride.destination.longitude.toFixed(4) }}</dd></div>
+              @if (ride.driver; as driver) {
+                <div><dt>Driver</dt><dd>{{ driver.id }}</dd></div>
+                <div><dt>Driver status</dt><dd>{{ driver.status.replaceAll('_', ' ') }}</dd></div>
+              }
+            </dl>
+          </section>
+        }
+
+        <p class="status-message" [class.error]="rideStore.error()">
+          {{ rideStore.error() ?? 'Active ride status refreshes every five seconds.' }}
+        </p>
+      </aside>
+    </section>
+  }
+</main>

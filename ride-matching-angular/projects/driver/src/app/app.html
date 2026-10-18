@@ -1,0 +1,50 @@
+<main class="app-shell">
+  <header>
+    <div><p class="eyebrow">Driver application</p><h1>Driver console</h1></div>
+    @if (auth.session(); as session) {
+      <div class="session"><span>{{ session.subject }}</span><button class="text-button" (click)="logout()">Sign out</button></div>
+    } @else {
+      <button class="primary" (click)="auth.login()">Sign in as driver</button>
+    }
+  </header>
+
+  @if (!auth.hasRole('DRIVER')) {
+        <section class="notice"><h2>Driver sign-in required</h2><p>Choose <code>driver-1</code> on the mock OAuth sign-in page, leave optional claims blank, then return here.</p></section>
+  } @else {
+    <section class="workspace">
+          <div class="map-card"><rm-ride-map [center]="selectedLocation()" [markers]="markers()" (locationSelected)="selectLocation($event)" /></div>
+      <aside class="side-panel">
+        <section>
+          <p class="eyebrow">Availability</p>
+          <h2>{{ rideStore.driver()?.status?.replaceAll('_', ' ') ?? 'Not registered' }}</h2>
+            <p class="muted">Click the map to set your location. It updates immediately and every 10 seconds while driving.</p>
+            <div class="button-row">
+              <button class="primary" [disabled]="rideStore.loading()" (click)="setAvailability(true)">Go available</button>
+              <button class="text-button" [disabled]="rideStore.loading()" (click)="setAvailability(false)">Go offline</button>
+          </div>
+        </section>
+
+        @if (rideStore.ride(); as ride) {
+          <section class="assignment">
+            <p class="eyebrow">Assigned ride</p><h2>{{ ride.status.replaceAll('_', ' ') }}</h2>
+            <dl><div><dt>Ride</dt><dd>{{ ride.id }}</dd></div><div><dt>Pickup</dt><dd>{{ ride.pickup.latitude.toFixed(4) }}, {{ ride.pickup.longitude.toFixed(4) }}</dd></div>
+              @if (ride.destination) { <div><dt>Destination</dt><dd>{{ ride.destination.latitude.toFixed(4) }}, {{ ride.destination.longitude.toFixed(4) }}</dd></div> }
+            </dl>
+            @if (ride.status === 'OFFERED') {
+              <div class="button-row"><button class="primary" [disabled]="rideStore.loading()" (click)="rideStore.accept()">Accept ride</button><button class="secondary" [disabled]="rideStore.loading()" (click)="rideStore.decline()">Decline ride</button></div>
+            }
+            @if (ride.status === 'DRIVER_EN_ROUTE') { <button class="secondary" [disabled]="rideStore.loading() || !withinPickupRadius()" (click)="rideStore.arrive()">Arrived at pickup</button><p class="muted">Arrival is enabled within 100 m of the pickup. The server verifies arrival.</p> }
+            @if (ride.status === 'WAITING_AT_PICKUP') { <button class="primary" [disabled]="rideStore.loading()" (click)="rideStore.pickup()">Pick up passenger</button> }
+            @if (ride.status === 'IN_PROGRESS') { <button class="primary" [disabled]="rideStore.loading()" (click)="rideStore.complete()">Complete ride</button> }
+            @if (ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED') { <button class="danger" [disabled]="rideStore.loading()" (click)="rideStore.cancel()">Cancel ride</button> }
+          </section>
+        } @else {
+          <section class="assignment empty"><p class="eyebrow">Assignment polling</p><p class="muted">The app checks for rides every five seconds while you are available.</p></section>
+        }
+        <p class="status-message" [class.error]="rideStore.error()">
+          {{ rideStore.error() ?? 'Driver assignment polling follows your availability.' }}
+        </p>
+      </aside>
+    </section>
+  }
+</main>

@@ -1,0 +1,35 @@
+@import 'leaflet/dist/leaflet.css';
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f3f5f2;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 14px;
+  cursor: pointer;
+  font-weight: 800;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+input {
+  min-height: 40px;
+  border: 1px solid #cbd8cf;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #1e2b27;
+}
