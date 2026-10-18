@@ -1,0 +1,6 @@
+gcp_project         = "my-gcp-project"
+region              = "europe-west1"
+image_uri           = "europe-west1-docker.pkg.dev/my-gcp-project/ride-matching/ride-matching@sha256:replace-with-64-hex-digest"
+jwt_issuer_uri      = "https://identity.example.com/"
+jwt_jwk_set_uri     = "https://identity.example.com/.well-known/jwks.json"
+cors_allowed_origins = "https://passenger.example.com,https://driver.example.com"

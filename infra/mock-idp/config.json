@@ -1,0 +1,34 @@
+{
+  "interactiveLogin": true,
+  "tokenCallbacks": [
+    {
+      "issuerId": "ride",
+      "requestMappings": [
+        {
+          "requestParam": "subject",
+          "match": "driver-.+",
+          "claims": {
+            "sub": "${subject}",
+            "roles": ["DRIVER"]
+          }
+        },
+        {
+          "requestParam": "subject",
+          "match": "rider-.+",
+          "claims": {
+            "sub": "${subject}",
+            "roles": ["RIDER"]
+          }
+        },
+        {
+          "requestParam": "subject",
+          "match": "admin-.+",
+          "claims": {
+            "sub": "${subject}",
+            "roles": ["ADMIN"]
+          }
+        }
+      ]
+    }
+  ]
+}
