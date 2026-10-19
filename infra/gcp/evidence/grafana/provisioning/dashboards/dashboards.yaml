@@ -1,0 +1,8 @@
+apiVersion: 1
+
+providers:
+  - name: Archived GCP Evidence
+    folder: Archived GCP Evidence
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
