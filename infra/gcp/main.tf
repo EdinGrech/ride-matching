@@ -14,11 +14,36 @@ provider "google" {
   region  = var.region
 }
 
+locals {
+  repository_url         = "${var.region}-docker.pkg.dev/${var.gcp_project}/${var.artifact_repository_id}"
+  spring_image           = "${local.repository_url}/api-spring:${var.build_id}"
+  quarkus_image          = "${local.repository_url}/api-quarkus:${var.build_id}"
+  grafana_image          = "${local.repository_url}/grafana:${var.build_id}"
+  k6_image               = "${local.repository_url}/k6:${var.build_id}"
+  mock_idp_image         = "${local.repository_url}/mock-idp:${var.build_id}"
+  prometheus_image       = "${local.repository_url}/prometheus:${var.build_id}"
+  service_account_prefix = substr(var.service_name, 0, 22)
+  benchmark_cells = {
+    "spring-jvm-1cpu"  = { cpu = "1", image = local.spring_image }
+    "spring-jvm-2cpu"  = { cpu = "2", image = local.spring_image }
+    "quarkus-jvm-1cpu" = { cpu = "1", image = local.quarkus_image }
+    "quarkus-jvm-2cpu" = { cpu = "2", image = local.quarkus_image }
+  }
+  api_invokers = {
+    for pair in setproduct(keys(local.benchmark_cells), var.invoker_members) :
+    "${pair[0]}-${substr(sha1(pair[1]), 0, 8)}" => { cell = pair[0], member = pair[1] }
+  }
+}
+
 resource "google_project_service" "required" {
   for_each = toset([
     "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "iam.googleapis.com",
+    "logging.googleapis.com",
     "monitoring.googleapis.com",
     "run.googleapis.com",
+    "secretmanager.googleapis.com",
   ])
 
   project            = var.gcp_project
@@ -43,47 +68,68 @@ resource "google_service_account" "runtime" {
 }
 
 resource "google_cloud_run_v2_service" "ride_matching" {
-  project  = var.gcp_project
-  name     = var.service_name
-  location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL"
+  for_each = local.benchmark_cells
+
+  project             = var.gcp_project
+  name                = "${var.service_name}-${each.key}"
+  location            = var.region
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
 
   template {
     service_account                  = google_service_account.runtime.email
     max_instance_request_concurrency = var.container_concurrency
 
     scaling {
-      min_instance_count = 1
-      max_instance_count = 1
+      min_instance_count = var.min_instance_count
+      max_instance_count = var.max_instance_count
     }
 
     containers {
-      image = var.image_uri
+      image = each.value.image
 
       ports {
         container_port = 8080
       }
 
+      # The API requires JWTs, so use a TCP probe rather than exposing a public health route.
+      startup_probe {
+        failure_threshold     = 12
+        initial_delay_seconds = 0
+        period_seconds        = 5
+        timeout_seconds       = 1
+
+        tcp_socket {
+          port = 8080
+        }
+      }
+
       resources {
         limits = {
-          cpu    = "2"
-          memory = "2Gi"
+          cpu    = each.value.cpu
+          memory = "512Mi"
         }
+        cpu_idle = false
       }
 
       env {
         name  = "JWT_ISSUER_URI"
-        value = var.jwt_issuer_uri
+        value = "${google_cloud_run_v2_service.mock_idp.uri}/ride"
       }
 
       env {
         name  = "JWT_JWK_SET_URI"
-        value = var.jwt_jwk_set_uri
+        value = "${google_cloud_run_v2_service.mock_idp.uri}/ride/jwks"
       }
 
       env {
         name  = "CORS_ALLOWED_ORIGINS"
-        value = var.cors_allowed_origins
+        value = "*"
+      }
+
+      env {
+        name  = "LOAD_TEST_RUN_ID"
+        value = var.test_run_id
       }
     }
   }
@@ -97,174 +143,21 @@ resource "google_cloud_run_v2_service" "ride_matching" {
     google_artifact_registry_repository.images,
     google_project_service.required,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = var.max_instance_count >= var.min_instance_count
+      error_message = "max_instance_count must be greater than or equal to min_instance_count."
+    }
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker" {
-  for_each = toset(var.invoker_members)
+  for_each = local.api_invokers
 
-  project  = google_cloud_run_v2_service.ride_matching.project
-  location = google_cloud_run_v2_service.ride_matching.location
-  name     = google_cloud_run_v2_service.ride_matching.name
+  project  = google_cloud_run_v2_service.ride_matching[each.value.cell].project
+  location = google_cloud_run_v2_service.ride_matching[each.value.cell].location
+  name     = google_cloud_run_v2_service.ride_matching[each.value.cell].name
   role     = "roles/run.invoker"
-  member   = each.value
-}
-
-resource "google_monitoring_dashboard" "cloud_run" {
-  project = var.gcp_project
-
-  dashboard_json = jsonencode({
-    displayName = "${var.service_name} Cloud Run"
-    mosaicLayout = {
-      columns = 12
-      tiles = [
-        {
-          xPos   = 0
-          yPos   = 0
-          width  = 6
-          height = 4
-          widget = {
-            title = "Request rate"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type = \"run.googleapis.com/request_count\" AND resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\""
-                    aggregation = {
-                      alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_RATE"
-                      crossSeriesReducer = "REDUCE_SUM"
-                    }
-                  }
-                }
-              }]
-              yAxis = {
-                label = "requests/s"
-                scale = "LINEAR"
-              }
-            }
-          }
-        },
-        {
-          xPos   = 6
-          yPos   = 0
-          width  = 6
-          height = 4
-          widget = {
-            title = "Container instances"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type = \"run.googleapis.com/container/instance_count\" AND resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\""
-                    aggregation = {
-                      alignmentPeriod  = "60s"
-                      perSeriesAligner = "ALIGN_MEAN"
-                    }
-                  }
-                }
-              }]
-              yAxis = {
-                label = "instances"
-                scale = "LINEAR"
-              }
-            }
-          }
-        },
-        {
-          xPos   = 0
-          yPos   = 4
-          width  = 6
-          height = 4
-          widget = {
-            title = "P95 request latency"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type = \"run.googleapis.com/request_latencies\" AND resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\""
-                    aggregation = {
-                      alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_DELTA"
-                      crossSeriesReducer = "REDUCE_PERCENTILE_95"
-                    }
-                  }
-                }
-              }]
-            }
-          }
-        },
-        {
-          xPos   = 6
-          yPos   = 4
-          width  = 6
-          height = 4
-          widget = {
-            title = "5xx error rate"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type = \"run.googleapis.com/request_count\" AND metric.labels.response_code_class = \"5xx\" AND resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\""
-                    aggregation = {
-                      alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_RATE"
-                      crossSeriesReducer = "REDUCE_SUM"
-                    }
-                  }
-                }
-              }]
-            }
-          }
-        },
-        {
-          xPos   = 0
-          yPos   = 8
-          width  = 6
-          height = 4
-          widget = {
-            title = "CPU utilization"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type = \"run.googleapis.com/container/cpu/utilizations\" AND resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\""
-                    aggregation = {
-                      alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_MEAN"
-                      crossSeriesReducer = "REDUCE_MEAN"
-                    }
-                  }
-                }
-              }]
-            }
-          }
-        },
-        {
-          xPos   = 6
-          yPos   = 8
-          width  = 6
-          height = 4
-          widget = {
-            title = "Memory utilization"
-            xyChart = {
-              dataSets = [{
-                timeSeriesQuery = {
-                  timeSeriesFilter = {
-                    filter = "metric.type = \"run.googleapis.com/container/memory/utilizations\" AND resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\""
-                    aggregation = {
-                      alignmentPeriod    = "60s"
-                      perSeriesAligner   = "ALIGN_MEAN"
-                      crossSeriesReducer = "REDUCE_MEAN"
-                    }
-                  }
-                }
-              }]
-            }
-          }
-        },
-      ]
-    }
-  })
-
-  depends_on = [google_project_service.required]
+  member   = each.value.member
 }

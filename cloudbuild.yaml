@@ -1,0 +1,58 @@
+substitutions:
+  _REGION: europe-west1
+  _REPOSITORY: ride-matching
+  _TAG: loadtest
+
+steps:
+  - name: maven:3.9-eclipse-temurin-21
+    dir: ride-matching-springboot
+    args: ["mvn", "-B", "package"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "--tag", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api-spring:${_TAG}", "--file", "ride-matching-springboot/Dockerfile.jvm", "ride-matching-springboot"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api-spring:${_TAG}"]
+
+  - name: maven:3.9-eclipse-temurin-21
+    dir: ride-matching-quarkus
+    args: ["mvn", "-B", "package"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "--tag", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api-quarkus:${_TAG}", "--file", "ride-matching-quarkus/src/main/docker/Dockerfile.jvm", "ride-matching-quarkus"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api-quarkus:${_TAG}"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["pull", "ghcr.io/navikt/mock-oauth2-server:6"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["tag", "ghcr.io/navikt/mock-oauth2-server:6", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/mock-idp:${_TAG}"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/mock-idp:${_TAG}"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["pull", "prom/prometheus:v3.5.0"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["tag", "prom/prometheus:v3.5.0", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/prometheus:${_TAG}"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/prometheus:${_TAG}"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "--build-arg", "GCP_PROJECT=$PROJECT_ID", "--tag", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/grafana:${_TAG}", "--file", "infra/gcp/grafana/Dockerfile", "infra/gcp/grafana"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/grafana:${_TAG}"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "--tag", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/k6:${_TAG}", "--file", "loadtest/Dockerfile", "loadtest"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/k6:${_TAG}"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY

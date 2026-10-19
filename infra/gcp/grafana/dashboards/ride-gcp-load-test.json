@@ -1,0 +1,204 @@
+{
+  "annotations": { "list": [] },
+  "description": "Concurrent Cloud Run comparison. k6 provides client evidence; Google Cloud Monitoring provides real container and request telemetry. Raw request and container logs are available in Explore through the Google Cloud datasource.",
+  "editable": true,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [{ "expr": "k6_simulated_users_active{flow=\"population-ramp\",scenario=\"population_metrics\",implementation=~\"$implementation\",testid=~\"$testid\"}", "legendFormat": "{{implementation}}", "refId": "A" }],
+      "title": "Active Simulated Users",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "targets": [{ "expr": "sum by (implementation) (rate(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\"}[$__rate_interval]))", "legendFormat": "{{implementation}}", "refId": "A" }],
+      "title": "Total Application Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "targets": [{ "expr": "sum by (implementation, name) (rate(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\"}[$__rate_interval]))", "legendFormat": "{{implementation}} {{name}}", "refId": "A" }],
+      "title": "Achieved Request Rate By Endpoint",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "maxPerRow": 2,
+      "repeat": "endpoint",
+      "repeatDirection": "h",
+      "targets": [{ "expr": "1000 * max by (implementation) (k6_http_req_duration_p50{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\",name=~\"$endpoint\"})", "legendFormat": "{{implementation}}", "refId": "A" }],
+      "title": "k6 p50 Latency: $endpoint",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 5,
+      "maxPerRow": 2,
+      "repeat": "endpoint",
+      "repeatDirection": "h",
+      "targets": [{ "expr": "1000 * max by (implementation) (k6_http_req_duration_p95{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\",name=~\"$endpoint\"})", "legendFormat": "{{implementation}}", "refId": "A" }],
+      "title": "k6 p95 Latency: $endpoint",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 6,
+      "maxPerRow": 2,
+      "repeat": "endpoint",
+      "repeatDirection": "h",
+      "targets": [{ "expr": "1000 * max by (implementation) (k6_http_req_duration_p99{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\",name=~\"$endpoint\"})", "legendFormat": "{{implementation}}", "refId": "A" }],
+      "title": "k6 p99 Latency: $endpoint",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 7,
+      "targets": [{ "expr": "sum by (implementation) (increase(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\",expected_response=\"false\"}[$__range])) or vector(0)", "legendFormat": "{{implementation}}", "refId": "A" }],
+      "title": "Application Request Failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 8,
+      "targets": [
+        { "expr": "sum by (implementation) (rate(k6_ride_lifecycles_completed_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\"}[$__rate_interval]))", "legendFormat": "{{implementation}} completed", "refId": "A" },
+        { "expr": "sum by (implementation, reason) (rate(k6_ride_lifecycles_aborted_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\"}[$__rate_interval])) or vector(0)", "legendFormat": "{{implementation}} {{reason}} aborted", "refId": "B" }
+      ],
+      "title": "Lifecycle Outcome Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "stackdriver", "uid": "google-cloud" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 9,
+      "targets": [{ "queryType": "metrics", "refId": "A", "metricQuery": { "aliasBy": "{{resource.label.service_name}}", "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_PERCENTILE_50", "filters": ["resource.type", "=", "cloud_run_revision"], "groupBys": ["resource.label.\"service_name\""], "metricKind": "DELTA", "metricType": "run.googleapis.com/container/cpu/utilizations", "perSeriesAligner": "ALIGN_DELTA", "projectName": "__GCP_PROJECT__", "valueType": "DISTRIBUTION" } }],
+      "title": "Cloud Run API CPU Utilization",
+      "transformations": [{ "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "ride-matching-loadtest-spring-jvm-1cpu", "ride-matching-loadtest-spring-jvm-2cpu", "ride-matching-loadtest-quarkus-jvm-1cpu", "ride-matching-loadtest-quarkus-jvm-2cpu"] } } }],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "stackdriver", "uid": "google-cloud" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "id": 10,
+      "targets": [{ "queryType": "metrics", "refId": "A", "metricQuery": { "aliasBy": "{{resource.label.service_name}}", "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_PERCENTILE_50", "filters": ["resource.type", "=", "cloud_run_revision"], "groupBys": ["resource.label.\"service_name\""], "metricKind": "DELTA", "metricType": "run.googleapis.com/container/memory/utilizations", "perSeriesAligner": "ALIGN_DELTA", "projectName": "__GCP_PROJECT__", "valueType": "DISTRIBUTION" } }],
+      "title": "Cloud Run API Memory Utilization",
+      "transformations": [{ "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "ride-matching-loadtest-spring-jvm-1cpu", "ride-matching-loadtest-spring-jvm-2cpu", "ride-matching-loadtest-quarkus-jvm-1cpu", "ride-matching-loadtest-quarkus-jvm-2cpu"] } } }],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "stackdriver", "uid": "google-cloud" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "id": 11,
+      "targets": [{ "queryType": "metrics", "refId": "A", "metricQuery": { "aliasBy": "{{resource.label.service_name}}", "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_SUM", "filters": ["resource.type", "=", "cloud_run_revision"], "groupBys": ["resource.label.\"service_name\""], "metricKind": "DELTA", "metricType": "run.googleapis.com/request_count", "perSeriesAligner": "ALIGN_RATE", "projectName": "__GCP_PROJECT__", "valueType": "INT64" } }],
+      "title": "Cloud Run API Request Rate",
+      "transformations": [{ "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "ride-matching-loadtest-spring-jvm-1cpu", "ride-matching-loadtest-spring-jvm-2cpu", "ride-matching-loadtest-quarkus-jvm-1cpu", "ride-matching-loadtest-quarkus-jvm-2cpu"] } } }],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "stackdriver", "uid": "google-cloud" },
+      "fieldConfig": { "defaults": { "unit": "ms", "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "id": 12,
+      "targets": [{ "queryType": "metrics", "refId": "A", "metricQuery": { "aliasBy": "{{resource.label.service_name}}", "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_PERCENTILE_95", "filters": ["resource.type", "=", "cloud_run_revision"], "groupBys": ["resource.label.\"service_name\""], "metricKind": "DELTA", "metricType": "run.googleapis.com/request_latencies", "perSeriesAligner": "ALIGN_DELTA", "projectName": "__GCP_PROJECT__", "valueType": "DISTRIBUTION" } }],
+      "title": "Cloud Run API p95 Latency",
+      "transformations": [{ "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "ride-matching-loadtest-spring-jvm-1cpu", "ride-matching-loadtest-spring-jvm-2cpu", "ride-matching-loadtest-quarkus-jvm-1cpu", "ride-matching-loadtest-quarkus-jvm-2cpu"] } } }],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "stackdriver", "uid": "google-cloud" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "id": 13,
+      "targets": [{ "queryType": "metrics", "refId": "A", "metricQuery": { "aliasBy": "{{resource.label.service_name}}", "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_SUM", "filters": ["metric.label.\"response_code_class\"", "=", "5xx"], "groupBys": ["resource.label.\"service_name\""], "metricKind": "DELTA", "metricType": "run.googleapis.com/request_count", "perSeriesAligner": "ALIGN_RATE", "projectName": "__GCP_PROJECT__", "valueType": "INT64" } }],
+      "title": "Cloud Run 5xx Error Rate",
+      "transformations": [{ "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "ride-matching-loadtest-spring-jvm-1cpu", "ride-matching-loadtest-spring-jvm-2cpu", "ride-matching-loadtest-quarkus-jvm-1cpu", "ride-matching-loadtest-quarkus-jvm-2cpu"] } } }],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "stackdriver", "uid": "google-cloud" },
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "id": 14,
+      "targets": [{ "queryType": "metrics", "refId": "A", "metricQuery": { "aliasBy": "{{resource.label.service_name}}", "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_SUM", "filters": ["resource.type", "=", "cloud_run_revision"], "groupBys": ["resource.label.\"service_name\""], "metricKind": "GAUGE", "metricType": "run.googleapis.com/container/instance_count", "perSeriesAligner": "ALIGN_MEAN", "projectName": "__GCP_PROJECT__", "valueType": "INT64" } }],
+      "title": "Cloud Run API Instances",
+      "transformations": [{ "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "ride-matching-loadtest-spring-jvm-1cpu", "ride-matching-loadtest-spring-jvm-2cpu", "ride-matching-loadtest-quarkus-jvm-1cpu", "ride-matching-loadtest-quarkus-jvm-2cpu"] } } }],
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["gcp", "k6", "cloud-run", "ride-matching"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(k6_http_reqs_total{flow=\"population-ramp\"}, implementation)",
+        "includeAll": true,
+        "label": "Implementation",
+        "multi": true,
+        "name": "implementation",
+        "options": [],
+        "query": { "query": "label_values(k6_http_reqs_total{flow=\"population-ramp\"}, implementation)", "refId": "StandardVariableQuery" },
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\"}, testid)",
+        "includeAll": true,
+        "label": "Test matrix",
+        "multi": false,
+        "name": "testid",
+        "options": [],
+        "query": { "query": "label_values(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\"}, testid)", "refId": "StandardVariableQuery" },
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\"}, name)",
+        "includeAll": true,
+        "label": "Endpoint",
+        "multi": true,
+        "name": "endpoint",
+        "options": [],
+        "query": { "query": "label_values(k6_http_reqs_total{flow=\"population-ramp\",implementation=~\"$implementation\",testid=~\"$testid\"}, name)", "refId": "StandardVariableQuery" },
+        "refresh": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "title": "Ride GCP Load Test",
+  "uid": "ride-gcp-load-test",
+  "version": 2
+}

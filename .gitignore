@@ -1,1 +1,4 @@
 infra/gcp/.terraform/
+infra/gcp/terraform.tfvars
+infra/gcp/*.tfplan
+infra/gcp/terraform.tfstate*

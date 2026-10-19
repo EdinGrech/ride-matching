@@ -1,0 +1,12 @@
+# Cloud Build compiles the backend and builds images remotely.
+.gcloudignore
+.git
+.gitignore
+
+**/.angular/
+**/.terraform/
+**/dist/
+**/node_modules/
+**/target/
+
+*.log
