@@ -4,9 +4,9 @@ In-memory Quarkus implementation of the ride matching API. Driver and ride state
 
 ## Local Development
 
-Requires Java 21 and Docker.
+From the repository root, you need Java 21, Docker Compose v2, and Windows PowerShell. This is an alternative API implementation; the default manual demo uses Spring Boot.
 
-1. From the workspace root, start the local identity provider:
+1. Start the local identity provider:
 
    ```powershell
    docker compose up -d mock-idp
@@ -15,10 +15,22 @@ Requires Java 21 and Docker.
 2. Start the API:
 
    ```powershell
-   .\mvnw.cmd quarkus:dev
+   .\ride-matching-quarkus\mvnw.cmd quarkus:dev
    ```
 
 The API starts on `http://localhost:8080`. It validates JWTs from the workspace mock issuer and accepts frontend origins at `http://localhost:4200` and `http://localhost:4201` by default.
+
+Run the test suite from the repository root:
+
+```powershell
+.\ride-matching-quarkus\mvnw.cmd -f .\ride-matching-quarkus\pom.xml test
+```
+
+Stop the API with `Ctrl+C`, then stop the local issuer when finished:
+
+```powershell
+docker compose stop mock-idp
+```
 
 ## Configuration
 

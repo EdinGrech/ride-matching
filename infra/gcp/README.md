@@ -1,32 +1,45 @@
 # GCP Load Test
 
-Run this from the workspace root to reset the disposable stack, build both JVM APIs on Cloud Build, deploy four isolated benchmark cells, start their k6 jobs concurrently, and print the Grafana URL:
+This directory provisions a disposable, test-only Cloud Run benchmark matrix. It builds Spring Boot and Quarkus JVM images, deploys four single-instance API cells, starts their k6 jobs, and exposes Grafana and Prometheus for the run.
 
-```powershell
-.\infra\gcp\run-loadtest.ps1 -Project "your-gcp-project-id" -Region "europe-west1" -Reset
-```
+## Prerequisites
 
-Only replace these values:
+Run commands from the repository root on Windows PowerShell. You need:
 
-- `Project`: the GCP project ID.
-- `Region`: the GCP region.
+- `gcloud` authenticated for both the CLI and Application Default Credentials.
+- `terraform.exe` 1.6 or later.
+- A billing-enabled GCP project and permission to enable APIs and create Cloud Run, Cloud Build, Artifact Registry, IAM, Secret Manager, and monitoring resources.
 
-`quick` is the default profile. Use `-Profile full` for the longer test.
+Use an isolated project and Artifact Registry repository. The stack is public and test-only: the APIs, mock OIDC issuer, Prometheus, and anonymous-admin Grafana allow unauthenticated invocation or access where required by the benchmark.
 
-Run a clean full test:
+## Run A Benchmark
+
+`quick` is the default profile. Run a clean full matrix with:
 
 ```powershell
 .\infra\gcp\run-loadtest.ps1 -Project "your-gcp-project-id" -Region "europe-west1" -Full -Reset
 ```
 
-The full matrix runs Spring and Quarkus at one and two vCPU concurrently. Each API remains one fixed `512Mi` Cloud Run instance because rides are held in memory. Each k6 generator has `2 vCPU` and `2Gi` so it does not become the test bottleneck.
+The matrix runs Spring and Quarkus at one and two vCPU concurrently. Each API remains one fixed `512 MiB` Cloud Run instance because the benchmarked implementations use in-memory ride state. Each k6 generator has `2 vCPU` and `2 GiB` so it is not the test bottleneck.
 
-Grafana restores the local k6 evidence and adds Cloud Run CPU, memory, instances, server latency, request rate, and 5xx telemetry from the Google Cloud datasource. Cloud Monitoring can take several minutes to publish platform samples. Raw request and container logs remain in Cloud Logging and are available from Grafana Explore through the Google Cloud datasource.
+The script prints a Grafana URL when the jobs finish. Cloud Monitoring can take several minutes to publish platform samples.
 
-The stack is intentionally disposable and test-only: Grafana, Prometheus, and the mock OIDC issuer are public. A full matrix creates substantial request logs; capture the Grafana evidence, then destroy the stack to stop all instance charges.
+## Export Evidence Before Cleanup
 
-Destroy the stack without starting a new run:
+Copy the run ID from the Grafana URL printed by the runner, then export the raw Prometheus, Cloud Monitoring, Cloud Run, Cloud Logging, and Grafana evidence:
+
+```powershell
+.\infra\gcp\export-loadtest-evidence.ps1 -Project "your-gcp-project-id" -Region "europe-west1" -RunId "run-..."
+```
+
+The default archive path is `results\gcp\<run-id>`. Open a completed archive with the [offline evidence viewer](evidence/README.md).
+
+## Destroy The Stack
+
+Destroy the Cloud Run benchmark resources without starting a new run:
 
 ```powershell
 .\infra\gcp\run-loadtest.ps1 -Project "your-gcp-project-id" -Region "europe-west1" -Destroy
 ```
+
+`-Reset` and `-Destroy` run Terraform destruction first. If Terraform cannot remove a non-empty Artifact Registry repository, the runner deletes its packages and retries. Do not reuse that repository for non-test images.

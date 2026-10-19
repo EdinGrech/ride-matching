@@ -1,6 +1,6 @@
 # Ride Matching Benchmark
 
-Prerequisites: Docker Desktop running Linux containers and JDK 21. Run commands from the workspace root.
+Prerequisites: Windows PowerShell, Docker Desktop running Linux containers with Docker Compose v2, and JDK 21. Run commands from the repository root.
 
 ## Run
 
@@ -29,15 +29,26 @@ The full run takes about 24 minutes and ramps through 1, 5, 10, 25, and 50 cohor
 
 The test fails on request errors, lifecycle aborts, or dropped iterations. Setup/token traffic is tagged `actor-setup`; measured application traffic is tagged `population-ramp`.
 
-## Evidence
+## Results
 
 - Grafana: `http://localhost:3000`
 - Prometheus: `http://localhost:9090`
 - Dashboard: `http://localhost:3000/d/ride-benchmark/ride-benchmark`
 
-The dashboard shows active simulated users, achieved request rate, p50/p95/p99 latency, failures, lifecycle outcomes, and cAdvisor CPU/memory for the internal `api` container. The API is intentionally a single container because ride state is in memory; benchmark population comes from k6 users, not service replicas.
+The dashboard shows active simulated users, achieved request rate, p50/p95/p99 latency, failures, lifecycle outcomes, and cAdvisor CPU and memory for the internal `api` container. The API is intentionally a single container because ride state is in memory; benchmark population comes from k6 users, not service replicas.
 
-Stop the local stack when finished:
+See [local observability](../infra/observability/README.md) for the dashboard, Prometheus, and cAdvisor setup.
+
+## Run Against A Deployed API
+
+Use `-BaseUrl` only with an absolute HTTPS URL. Provide either JSON arrays in both `RIDER_TOKENS` and `DRIVER_TOKENS`, or `TOKEN_ISSUER` for the deployed test identity provider. In this mode the runner starts cAdvisor, Prometheus, and Grafana locally; it does not build or start an API container.
+
+```powershell
+$env:TOKEN_ISSUER = "https://your-test-issuer.example/ride"
+.\loadtest\run-benchmark.ps1 -BaseUrl "https://your-api.example"
+```
+
+## Teardown
 
 ```powershell
 docker compose -f compose.yaml -f compose.observability.yaml -f compose.benchmark.yaml down

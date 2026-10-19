@@ -1,33 +1,26 @@
 # Ride Matching Angular Demo
 
-Leaflet/OSM dashboard for the Spring Boot ride-matching API. It uses the workspace mock OIDC issuer and the API contract in `../ride-matching-springboot/openapi.yaml`.
+Leaflet and OpenStreetMap passenger and driver applications for the Spring Boot ride-matching API. They use the workspace mock OIDC issuer and [the API contract](../ride-matching-springboot/openapi.yaml).
 
 ## Start
 
-1. Start the mock issuer from the workspace root:
+You need Node.js, npm, the local mock issuer, and the Spring Boot API. Start the issuer and API from the repository root as described in the [root README](../README.md), then run these commands from `ride-matching-angular`:
 
-   ```powershell
-   docker compose up -d mock-idp
-   ```
+```powershell
+npm ci
+```
 
-2. Start the Spring Boot API with its `local` profile:
+Start the passenger application:
 
-   ```powershell
-   cd ..\ride-matching-springboot
-   .\mvnw.cmd "-Dspring-boot.run.profiles=local" spring-boot:run
-   ```
+```powershell
+npm run start:passenger
+```
 
-3. Start the passenger application:
+In a second terminal in the same directory, start the driver application:
 
-   ```powershell
-   npm run start:passenger
-   ```
-
-4. In a second terminal, start the driver application:
-
-   ```powershell
-   npm run start:driver
-   ```
+```powershell
+npm run start:driver
+```
 
 Open `http://localhost:4200` for passengers and `http://localhost:4201` for drivers.
 
@@ -40,8 +33,18 @@ Open `http://localhost:4200` for passengers and `http://localhost:4201` for driv
 
 The mock issuer login and token debugger are at `http://localhost:8090/ride/debugger`. The browser login uses Authorization Code with PKCE and is the intended local flow.
 
+## Build And Test
+
+Run these commands from `ride-matching-angular`:
+
+```powershell
+npm run build:passenger
+npm run build:driver
+npm run test -- --watch=false
+```
+
 ## Notes
 
 - OpenStreetMap tiles are used only for the local visual demo.
-- The backend permits Angular's `http://localhost:4200` origin by default. Restart it after pulling backend CORS changes.
+- The backend permits both `http://localhost:4200` and `http://localhost:4201` by default. Restart it after pulling backend CORS changes.
 - The mock OIDC service is local-test infrastructure, not a production identity provider.

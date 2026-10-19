@@ -4,22 +4,33 @@ In-memory Spring Boot service that matches riders with drivers and enforces the 
 
 ## Local Development
 
-Requires Java 21, Docker, and IntelliJ IDEA.
+From the repository root, you need Java 21, Docker Compose v2, and Windows PowerShell. IntelliJ IDEA is optional; the Maven wrapper provides the command-line path below.
 
-1. From the workspace root, start the local identity provider:
+1. Start the local identity provider:
 
    ```powershell
    docker compose up -d mock-idp
    ```
 
-2. Open this project's `pom.xml` in IntelliJ as a Maven project and select a Java 21 SDK.
-3. Create a **Spring Boot** run configuration for `RideMatchingSpringbootApplication`, then run it.
+2. Start the API:
+
+   ```powershell
+   .\ride-matching-springboot\mvnw.cmd "-Dspring-boot.run.profiles=local" spring-boot:run
+   ```
+
+   Alternatively, open this project's `pom.xml` in IntelliJ as a Maven project, select a Java 21 SDK, and run `RideMatchingSpringbootApplication` with the `local` profile.
 
 The API starts on `http://localhost:8080`. Its defaults use the local issuer and allow the passenger and driver applications at `http://localhost:4200` and `http://localhost:4201`.
 
+Stop the API with `Ctrl+C`, then stop the local issuer when finished:
+
+```powershell
+docker compose stop mock-idp
+```
+
 ### Local Identity Provider
 
-Local authentication is provided by the workspace's `mock-idp` Docker service, which runs Navikt's [`mock-oauth2-server`](https://github.com/navikt/mock-oauth2-server). Its configuration is in `../compose.yaml` and `../infra/mock-idp/config.json`.
+Local authentication is provided by the workspace's `mock-idp` Docker service, which runs Navikt's [`mock-oauth2-server`](https://github.com/navikt/mock-oauth2-server). Its configuration is in [the workspace Compose file](../compose.yaml) and [the mock-IDP configuration](../infra/mock-idp/config.json).
 
 The local issuer is `http://localhost:8090/ride`; its public signing keys are at `http://localhost:8090/ride/jwks`. It is test infrastructure, not a production identity provider. Production deployments must set `JWT_ISSUER_URI` and `JWT_JWK_SET_URI` for their real provider.
 
@@ -27,7 +38,7 @@ Use a unique subject beginning with `driver-`, `rider-`, or `admin-`, such as `d
 
 ## Test The API
 
-`openapi.yaml` is the API reference used by the Angular application. `ride-matching.http` contains the happy path for IntelliJ Ultimate's HTTP Client or the VS Code REST Client. For a desktop API client, follow the [Bruno collection instructions](bruno/README.md).
+[`openapi.yaml`](openapi.yaml) is the API reference used by the Angular application. Use the passenger and driver applications for the preferred manual test path, or follow the [Bruno collection instructions](bruno/README.md) for a desktop API client.
 
 The passenger and driver applications are the preferred manual test harness. Their setup is in the [Angular README](../ride-matching-angular/README.md).
 
@@ -39,8 +50,10 @@ The passenger and driver applications are the preferred manual test harness. The
 | DRIVER | PUT | `/drivers/me/availability` |
 | DRIVER | PUT | `/drivers/me/location` |
 | DRIVER | GET | `/drivers/me/ride` |
+| DRIVER | GET | `/drivers/me/state` |
 | RIDER | POST | `/rides` |
 | RIDER | GET | `/riders/me/ride` |
+| RIDER | DELETE | `/riders/me/ride` |
 | DRIVER | POST | `/rides/{rideId}/accept` |
 | DRIVER | POST | `/rides/{rideId}/decline` |
 | DRIVER | POST | `/rides/{rideId}/arrive` |
@@ -69,7 +82,7 @@ One rider can have one active ride, and one driver can have one offered or activ
 | `WAITING_AT_PICKUP` | Driver is within the configured pickup radius. | Pick up the rider. |
 | `IN_PROGRESS` | Ride has started. | Complete or cancel. |
 | `COMPLETED` | Ride finished. | None. The driver becomes available. |
-| `CANCELLED` | The original in-progress ride was cancelled. | None. A replacement ride may be matching. |
+| `CANCELLED` | A rider cancelled before acceptance, or a driver cancelled after pickup. | None. A replacement ride may be matching after a driver cancellation. |
 
 The driver cannot see the destination until `pickup` succeeds; riders always receive it. `arrive` requires the driver's most recently reported location to be inside the pickup radius.
 
