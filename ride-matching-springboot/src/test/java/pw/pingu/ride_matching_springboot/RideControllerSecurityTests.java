@@ -66,11 +66,13 @@ class RideControllerSecurityTests {
 	@Test
 	void allowsTheConfiguredFrontendOrigin() throws Exception {
 		for (String origin : List.of("http://localhost:4200", "http://localhost:4201")) {
-			mockMvc.perform(options("/rides")
-					.header("Origin", origin)
-					.header("Access-Control-Request-Method", "POST"))
-					.andExpect(status().isOk())
-					.andExpect(header().string("Access-Control-Allow-Origin", origin));
+			for (String method : List.of("POST", "DELETE")) {
+				mockMvc.perform(options("/rides")
+						.header("Origin", origin)
+						.header("Access-Control-Request-Method", method))
+						.andExpect(status().isOk())
+						.andExpect(header().string("Access-Control-Allow-Origin", origin));
+			}
 		}
 	}
 
