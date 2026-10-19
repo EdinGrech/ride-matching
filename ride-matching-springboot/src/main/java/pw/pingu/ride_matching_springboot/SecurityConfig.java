@@ -36,11 +36,15 @@ class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http,
-			Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter, ObjectMapper objectMapper) throws Exception {
+			Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter, ObjectMapper objectMapper,
+			@Value("${app.metrics.public:false}") boolean publicMetrics) throws Exception {
 		return http
 				.csrf(csrf -> csrf.disable())
 				.cors(Customizer.withDefaults())
-				.authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+				.authorizeHttpRequests(authorize -> {
+					if (publicMetrics) authorize.requestMatchers("/actuator/prometheus").permitAll();
+					authorize.anyRequest().authenticated();
+				})
 				.exceptionHandling(exceptions -> exceptions
 						.authenticationEntryPoint((request, response, exception) -> writeError(response, HttpStatus.UNAUTHORIZED,
 								"Authentication is required", objectMapper))
