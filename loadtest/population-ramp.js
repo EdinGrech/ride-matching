@@ -5,8 +5,10 @@ import exec from 'k6/execution';
 
 const baseUrl = (__ENV.BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 const tokenIssuer = (__ENV.TOKEN_ISSUER || 'http://mock-idp:8080/ride').replace(/\/$/, '');
-const tokenIssuerHost = __ENV.TOKEN_ISSUER_HOST || 'localhost:8090';
+const tokenIssuerHost = __ENV.TOKEN_ISSUER_HOST;
+const tokenIssuerClientAuth = __ENV.TOKEN_ISSUER_CLIENT_AUTH || 'Basic cmlkZS13ZWI6bG9jYWw=';
 const runId = __ENV.RUN_ID;
+const taskIndex = __ENV.CLOUD_RUN_TASK_INDEX || '0';
 const timeScale = Number(__ENV.TIME_SCALE || 60);
 const pollSeconds = Number(__ENV.POLL_SECONDS || 5);
 const riderCancelRate = Number(__ENV.RIDER_CANCEL_RATE || 0);
@@ -107,7 +109,7 @@ function request(method, path, token, name, expected, value, role) {
   const response = http.request(method, `${baseUrl}${path}`, value && JSON.stringify(value), {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     responseCallback: http.expectedStatuses(...expected),
-    tags: { name: endpoint, flow: 'population-ramp', role, time_scale: String(timeScale) },
+    tags: { name: endpoint, flow: 'population-ramp', role, shard: taskIndex, time_scale: String(timeScale) },
   });
   check(response, { [endpoint]: (result) => expected.includes(result.status) });
   return response;
@@ -116,9 +118,9 @@ function request(method, path, token, name, expected, value, role) {
 function issueToken(subject) {
   const response = http.post(`${tokenIssuer}/token`, `grant_type=client_credentials&subject=${encodeURIComponent(subject)}`, {
     headers: {
-      Authorization: 'Basic cmlkZS13ZWI6bG9jYWw=',
+      Authorization: tokenIssuerClientAuth,
       'Content-Type': 'application/x-www-form-urlencoded',
-      Host: tokenIssuerHost,
+      ...(tokenIssuerHost ? { Host: tokenIssuerHost } : {}),
     },
     tags: { name: 'POST /ride/token', flow: 'actor-setup' },
   });
@@ -141,11 +143,11 @@ export function setup() {
   const actorSlots = maxCohorts * 7 + 1;
   const generatedRiderTokens = riderTokens.length ? riderTokens : Array.from(
     { length: actorSlots },
-    (_, index) => issueToken(`rider-load-test-${runId}-${index + 1}`),
+    (_, index) => issueToken(`rider-load-test-${runId}-${taskIndex}-${index + 1}`),
   );
   const generatedDriverTokens = driverTokens.length ? driverTokens : Array.from(
     { length: actorSlots },
-    (_, index) => issueToken(`driver-load-test-${runId}-${index + 1}`),
+    (_, index) => issueToken(`driver-load-test-${runId}-${taskIndex}-${index + 1}`),
   );
   if (generatedRiderTokens.length < actorSlots || generatedDriverTokens.length < actorSlots) {
     throw new Error(`RIDER_TOKENS and DRIVER_TOKENS each need ${actorSlots} distinct tokens`);

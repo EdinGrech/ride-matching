@@ -39,7 +39,9 @@ services:
     environment:
       TOKEN_ISSUER: ${TOKEN_ISSUER:-http://mock-idp:8080/ride}
       TOKEN_ISSUER_HOST: ${TOKEN_ISSUER_HOST:-localhost:8090}
+      TOKEN_ISSUER_CLIENT_AUTH: ${TOKEN_ISSUER_CLIENT_AUTH:-}
       RUN_ID: ${RUN_ID:-}
+      CLOUD_RUN_TASK_INDEX: ${CLOUD_RUN_TASK_INDEX:-0}
       RIDER_TOKENS: ${RIDER_TOKENS:-[]}
       DRIVER_TOKENS: ${DRIVER_TOKENS:-[]}
       POLL_SECONDS: ${POLL_SECONDS:-5}
@@ -52,7 +54,7 @@ services:
       COHORT_STAGES: ${COHORT_STAGES:-}
       IMPLEMENTATION: ${IMPLEMENTATION:-springboot}
       K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
-      K6_PROMETHEUS_RW_PUSH_INTERVAL: 1s
+      K6_PROMETHEUS_RW_PUSH_INTERVAL: 2s
       K6_PROMETHEUS_RW_TREND_STATS: p(50),p(95),p(99),avg,max
     volumes:
       - ./loadtest:/scripts:ro

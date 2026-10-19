@@ -8,9 +8,11 @@ services:
       JWT_JWK_SET_URI: http://mock-idp:8080/ride/jwks
     cpus: ${API_CPUS:-1.0}
     mem_limit: ${API_MEMORY:-512m}
+    ports:
+      - "127.0.0.1::8080"
 
   k6:
     environment:
-      BASE_URL: http://api:8080
+      BASE_URL: ${BASE_URL:-http://api:8080}
     depends_on:
       - api
