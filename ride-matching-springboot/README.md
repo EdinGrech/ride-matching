@@ -77,6 +77,35 @@ Declining an offer or letting it time out returns the driver to `AVAILABLE`, exc
 
 Offer expiry and penalty expiry are checked every second and before each lifecycle operation. After the default 30-minute penalty expires, a driver becomes `OFFLINE` and must explicitly become available again.
 
+### Lifecycle Diagram
+
+```mermaid
+flowchart TD
+    Driver[Driver registers availability] --> Available[AVAILABLE]
+    Rider[Rider requests a ride] --> Eligible{Eligible driver available?}
+    Available --> Eligible
+    Available -.-> Nearby[Nearby-driver query<br/>sorted by Euclidean distance]
+    Eligible -->|No| Matching[MATCHING]
+    Eligible -->|Yes: nearest driver| Offered[OFFERED<br/>reserve driver for 30 seconds]
+    Matching -->|Driver becomes available| Offered
+    Matching -->|Rider cancels| Cancelled[CANCELLED<br/>release any offer]
+    Offered -->|Accept| EnRoute[DRIVER EN ROUTE]
+    Offered -->|Decline or offer timeout| Matching
+    Offered -->|Rider cancels| Cancelled
+    EnRoute -->|Within pickup radius| AtPickup[WAITING AT PICKUP]
+    EnRoute -->|Driver cancels| Rematch[MATCHING<br/>penalise driver and rematch]
+    AtPickup -->|Pickup| InProgress[IN PROGRESS<br/>reveal destination]
+    AtPickup -->|Driver cancels| Rematch
+    InProgress -->|Complete| Completed[COMPLETED<br/>release driver]
+    InProgress -->|Driver cancels| Replacement[Original ride CANCELLED<br/>replacement ride MATCHING]
+    Rematch -.-> Penalty[Driver PENALISED<br/>30-minute timeout]
+    Replacement -.-> Penalty
+    Penalty --> Offline[OFFLINE<br/>driver must opt in again]
+    Offered -.->|Wrong driver or stale offer| Rejected[403 or 409<br/>state unchanged]
+    EnRoute -.->|Outside pickup radius| Rejected
+    Rider -.->|Rider already has an active ride| Rejected
+```
+
 ## Configuration
 
 ```properties
